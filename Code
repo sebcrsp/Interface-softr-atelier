@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Interface de Chat</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f2f5;
+            height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .chat-container {
+            width: 100%;
+            max-width: 800px;
+            height: 600px;
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .chat-header {
+            background: #1a73e8;
+            color: white;
+            padding: 20px;
+            text-align: center;
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        .message {
+            margin-bottom: 15px;
+            padding: 10px 15px;
+            border-radius: 15px;
+            max-width: 70%;
+            word-wrap: break-word;
+        }
+
+        .user-message {
+            background: #e3f2fd;
+            margin-left: auto;
+            border-bottom-right-radius: 5px;
+        }
+
+        .bot-message {
+            background: #f5f5f5;
+            margin-right: auto;
+            border-bottom-left-radius: 5px;
+        }
+
+        .chat-input {
+            padding: 20px;
+            background: white;
+            border-top: 1px solid #eee;
+            display: flex;
+            gap: 10px;
+        }
+
+        #message-input {
+            flex: 1;
+            padding: 10px 15px;
+            border: 1px solid #ddd;
+            border-radius: 20px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        #message-input:focus {
+            border-color: #1a73e8;
+        }
+
+        #send-button {
+            background: #1a73e8;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 20px;
+            cursor: pointer;
+            font-size: 16px;
+            transition: background 0.3s;
+        }
+
+        #send-button:hover {
+            background: #1557b0;
+        }
+
+        #send-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .typing-indicator {
+            display: none;
+            padding: 10px 15px;
+            background: #f5f5f5;
+            border-radius: 15px;
+            margin-bottom: 15px;
+            width: fit-content;
+        }
+    </style>
+</head>
+<body>
+    <div class="chat-container">
+        <div class="chat-header">
+            <h2>Chat Interface</h2>
+        </div>
+        <div class="chat-messages" id="chat-container">
+            <div class="typing-indicator">En cours d'envoi...</div>
+        </div>
+        <div class="chat-input">
+            <input 
+                type="text" 
+                id="message-input" 
+                placeholder="Tapez votre message ici..."
+                autocomplete="off"
+            >
+            <button id="send-button">Envoyer</button>
+        </div>
+    </div>
+
+    <script>
+        class ChatInterface {
+            constructor() {
+                this.webhookUrl = 'https://hook.eu2.make.com/hznbe4v5lnsf7dmf4fcwh6uxgf7lzbgi';
+                this.chatContainer = document.getElementById('chat-container');
+                this.messageInput = document.getElementById('message-input');
+                this.sendButton = document.getElementById('send-button');
+                this.typingIndicator = document.querySelector('.typing-indicator');
+                
+                this.initializeEventListeners();
+                this.showWelcomeMessage();
+            }
+
+            initializeEventListeners() {
+                this.sendButton.addEventListener('click', () => this.sendMessage());
+                this.messageInput.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                        e.preventDefault();
+                        this.sendMessage();
+                    }
+                });
+            }
+
+            showWelcomeMessage() {
+                setTimeout(() => {
+                    this.addMessage("👋 Bonjour ! Comment puis-je vous aider aujourd'hui ?", false);
+                }, 500);
+            }
+
+            addMessage(text, isUser) {
+                const messageDiv = document.createElement('div');
+                messageDiv.className = `message ${isUser ? 'user-message' : 'bot-message'}`;
+                messageDiv.textContent = text;
+                this.chatContainer.appendChild(messageDiv);
+                this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+            }
+
+            showTypingIndicator() {
+                this.typingIndicator.style.display = 'block';
+                this.chatContainer.scrollTop = this.chatContainer.scrollHeight;
+            }
+
+            hideTypingIndicator() {
+                this.typingIndicator.style.display = 'none';
+            }
+
+            formatDateTime() {
+                const now = new Date();
+                return now.toISOString();
+            }
+
+            async sendMessage() {
+                const message = this.messageInput.value.trim();
+                if (!message) return;
+
+                this.messageInput.value = '';
+                this.messageInput.disabled = true;
+                this.sendButton.disabled = true;
+
+                this.addMessage(message, true);
+                this.showTypingIndicator();
+
+                try {
+                    // Préparation des données au format JSON
+                    const payload = {
+                        timestamp: this.formatDateTime(),
+                        message: message
+                    };
+
+                    console.log('Sending data:', payload);
+
+                    const response = await fetch(this.webhookUrl, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(payload)
+                    });
+
+                    if (!response.ok) {
+                        throw new Error(`Erreur réseau: ${response.status}`);
+                    }
+
+                    this.hideTypingIndicator();
+                    // Si vous attendez une réponse du webhook, utilisez :
+                    // const data = await response.json();
+                    // this.addMessage(data.response, false);
+                    
+                    // Sinon, affichez simplement une confirmation
+                    this.addMessage("Message bien reçu ✓", false);
+
+                } catch (error) {
+                    console.error('Erreur:', error);
+                    this.hideTypingIndicator();
+                    this.addMessage("Désolé, une erreur s'est produite lors de l'envoi du message. Veuillez réessayer.", false);
+                }
+
+                this.messageInput.disabled = false;
+                this.sendButton.disabled = false;
+                this.messageInput.focus();
+            }
+        }
+
+        // Initialisation de l'interface
+        document.addEventListener('DOMContentLoaded', () => {
+            new ChatInterface();
+        });
+    </script>
+</body>
+</html>
