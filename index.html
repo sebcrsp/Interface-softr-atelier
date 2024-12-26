@@ -114,6 +114,12 @@
             margin-bottom: 15px;
             width: fit-content;
         }
+
+        .error-message {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 5px;
+        }
     </style>
 </head>
 <body>
@@ -198,10 +204,10 @@
                 this.showTypingIndicator();
 
                 try {
-                    // Préparation des données au format JSON
                     const payload = {
                         timestamp: this.formatDateTime(),
-                        message: message
+                        message: message,
+                        sender: "user"  // Identifie l'expéditeur
                     };
 
                     console.log('Sending data:', payload);
@@ -209,7 +215,8 @@
                     const response = await fetch(this.webhookUrl, {
                         method: 'POST',
                         headers: {
-                            'Content-Type': 'application/json'
+                            'Content-Type': 'application/json',
+                            'Accept': 'application/json'  // Indique qu'on attend une réponse JSON
                         },
                         body: JSON.stringify(payload)
                     });
@@ -218,23 +225,38 @@
                         throw new Error(`Erreur réseau: ${response.status}`);
                     }
 
-                    this.hideTypingIndicator();
-                    // Si vous attendez une réponse du webhook, utilisez :
-                    // const data = await response.json();
-                    // this.addMessage(data.response, false);
-                    
-                    // Sinon, affichez simplement une confirmation
-                    this.addMessage("Message bien reçu ✓", false);
+                    // Traitement de la réponse
+                    try {
+                        const data = await response.json();
+                        console.log('Response received:', data);
+                        
+                        // Affiche la réponse selon le format reçu
+                        if (data.response) {
+                            this.addMessage(data.response, false);
+                        } else if (data.message) {
+                            this.addMessage(data.message, false);
+                        } else {
+                            this.addMessage("Message reçu ✓", false);
+                        }
+                    } catch (parseError) {
+                        console.log('Response is not JSON, displaying raw response');
+                        const textResponse = await response.text();
+                        if (textResponse) {
+                            this.addMessage(textResponse, false);
+                        } else {
+                            this.addMessage("Message envoyé ✓", false);
+                        }
+                    }
 
                 } catch (error) {
                     console.error('Erreur:', error);
-                    this.hideTypingIndicator();
                     this.addMessage("Désolé, une erreur s'est produite lors de l'envoi du message. Veuillez réessayer.", false);
+                } finally {
+                    this.hideTypingIndicator();
+                    this.messageInput.disabled = false;
+                    this.sendButton.disabled = false;
+                    this.messageInput.focus();
                 }
-
-                this.messageInput.disabled = false;
-                this.sendButton.disabled = false;
-                this.messageInput.focus();
             }
         }
 
